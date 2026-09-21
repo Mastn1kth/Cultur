@@ -1,6 +1,10 @@
 # CultureMatch
 
-CultureMatch is a React Native / Expo + Node.js MVP for cultural friendship, dating, events, and small communities. It is built as a monorepo:
+CultureMatch is a React Native / Expo + Node.js MVP for cultural friendship,
+dating, events, and small communities. It demonstrates the product flows,
+mobile interface, API design, geospatial data model, realtime chat, privacy
+surfaces, and local development workflow; it is not presented as a deployed
+production service. It is built as a monorepo:
 
 - `apps/api` - Express, PostgreSQL/PostGIS, Redis-ready services, Socket.io chat.
 - `apps/mobile` - Expo Router mobile app with onboarding, discovery, chat, events, communities, profile, privacy, and settings screens.
