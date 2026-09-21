@@ -1,0 +1,1451 @@
+openapi: 3.0.3
+info:
+  title: CultureMatch API
+  version: 0.1.0
+servers:
+  - url: http://localhost:4000
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: API and database are healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+        "503":
+          description: API is running but the database check failed
+  /auth/magic/start:
+    post:
+      summary: Start email magic link login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MagicStartRequest"
+      responses:
+        "200":
+          description: Magic link request accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MagicStartResponse"
+  /auth/verify:
+    post:
+      summary: Verify a magic link token and create a session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MagicVerifyRequest"
+      responses:
+        "200":
+          description: Access and refresh tokens
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+  /auth/magic/verify:
+    post:
+      summary: Verify a magic link token and create a session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/MagicVerifyRequest"
+                - type: object
+                  properties:
+                    email:
+                      type: string
+                      format: email
+      responses:
+        "200":
+          description: Access and refresh tokens
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+  /auth/google:
+    post:
+      summary: Verify a Google ID token and create a session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GoogleAuthRequest"
+      responses:
+        "200":
+          description: Access and refresh tokens
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+  /auth/apple:
+    post:
+      summary: Verify an Apple identity token and create a session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppleAuthRequest"
+      responses:
+        "200":
+          description: Access and refresh tokens
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+  /auth/refresh:
+    post:
+      summary: Rotate refresh token and issue a new access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshRequest"
+      responses:
+        "200":
+          description: New token pair
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+  /auth/logout:
+    post:
+      summary: Revoke active refresh tokens for the session user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LogoutRequest"
+      responses:
+        "200":
+          description: Logout completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+  /auth/oauth/{provider}:
+    post:
+      summary: Legacy OAuth provider endpoint
+      parameters:
+        - in: path
+          name: provider
+          required: true
+          schema:
+            type: string
+            enum: [apple, google]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [providerId]
+              properties:
+                providerId:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                deviceId:
+                  type: string
+                  default: mobile
+      responses:
+        "200":
+          description: Access and refresh tokens
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+  /users/me:
+    get:
+      summary: Current user and profile
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current user and profile, or null
+          content:
+            application/json:
+              schema:
+                nullable: true
+                allOf:
+                  - $ref: "#/components/schemas/Profile"
+    patch:
+      summary: Update current user account state
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CurrentUserPatch"
+      responses:
+        "200":
+          description: Current user and profile, or null
+          content:
+            application/json:
+              schema:
+                nullable: true
+                allOf:
+                  - $ref: "#/components/schemas/Profile"
+    delete:
+      summary: Soft delete the current user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: User marked deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteUserResponse"
+  /users/me/profile:
+    put:
+      summary: Upsert current user's full profile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileInput"
+      responses:
+        "200":
+          description: Profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+    patch:
+      summary: Partially update current user's profile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfilePatch"
+      responses:
+        "200":
+          description: Profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+  /users/me/hide:
+    post:
+      summary: Hide or unhide the current profile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [hidden]
+              properties:
+                hidden:
+                  type: boolean
+      responses:
+        "200":
+          description: Visibility updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+  /users/{id}/profile:
+    get:
+      summary: Public profile details for another user
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Profile, or null when unavailable
+          content:
+            application/json:
+              schema:
+                nullable: true
+                allOf:
+                  - $ref: "#/components/schemas/Profile"
+  /discovery:
+    get:
+      summary: Discovery feed ranked by compatibility
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: radiusKm
+          schema:
+            type: number
+            minimum: 1
+            maximum: 700
+            default: 50
+        - in: query
+          name: cursor
+          schema:
+            type: string
+        - in: query
+          name: goal
+          schema:
+            type: string
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 25
+            default: 10
+      responses:
+        "200":
+          description: Discovery cards
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscoveryResponse"
+  /discovery/second-look:
+    get:
+      summary: Recently skipped profiles
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Second-look profiles
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListResponse"
+  /matching/swipes:
+    post:
+      summary: Like, superlike, or skip a user
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SwipeRequest"
+      responses:
+        "200":
+          description: Match result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SwipeResponse"
+  /matching/matches:
+    get:
+      summary: Current matches
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/CursorParam"
+        - $ref: "#/components/parameters/LimitParam"
+      responses:
+        "200":
+          description: Match list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListResponse"
+  /chat/conversations:
+    get:
+      summary: Chat list with unread counts
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/CursorParam"
+        - $ref: "#/components/parameters/LimitParam"
+      responses:
+        "200":
+          description: Conversations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationListResponse"
+  /chat/conversations/{id}/messages:
+    get:
+      summary: Conversation messages
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+        - $ref: "#/components/parameters/CursorParam"
+        - $ref: "#/components/parameters/LimitParam"
+      responses:
+        "200":
+          description: Messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListResponse"
+    post:
+      summary: Send a conversation message
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageCreateRequest"
+      responses:
+        "201":
+          description: Message
+  /chat/icebreakers:
+    get:
+      summary: Cultural icebreaker prompts
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: conversationId
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: language
+          schema:
+            type: string
+            default: en
+      responses:
+        "200":
+          description: Icebreakers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListResponse"
+  /events:
+    get:
+      summary: List events
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: city
+          schema:
+            type: string
+        - $ref: "#/components/parameters/CursorParam"
+        - $ref: "#/components/parameters/LimitParam"
+      responses:
+        "200":
+          description: Events
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListResponse"
+    post:
+      summary: Create an event
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventCreateRequest"
+      responses:
+        "201":
+          description: Event
+  /events/{id}:
+    get:
+      summary: Event detail
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Event or null
+          content:
+            application/json:
+              schema:
+                nullable: true
+                allOf:
+                  - $ref: "#/components/schemas/EventDetail"
+  /events/{id}/attendees:
+    post:
+      summary: Set event attendance status
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [going, maybe]
+      responses:
+        "200":
+          description: Attendance saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+  /communities:
+    get:
+      summary: List small circles
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/CursorParam"
+        - $ref: "#/components/parameters/LimitParam"
+      responses:
+        "200":
+          description: Communities
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListResponse"
+    post:
+      summary: Create a small circle
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommunityCreateRequest"
+      responses:
+        "201":
+          description: Community
+  /communities/{id}/join:
+    post:
+      summary: Join a small circle
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Joined or already a member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+  /communities/{id}:
+    get:
+      summary: Small circle detail
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Community or null
+          content:
+            application/json:
+              schema:
+                nullable: true
+                allOf:
+                  - $ref: "#/components/schemas/CommunityDetail"
+  /communities/{id}/leave:
+    post:
+      summary: Leave a small circle
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Left or was not a member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+  /communities/{id}/messages:
+    get:
+      summary: Community messages
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommunityMessageListResponse"
+    post:
+      summary: Send a community message
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content:
+                  type: string
+                  minLength: 1
+                  maxLength: 2000
+      responses:
+        "201":
+          description: Message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommunityMessage"
+  /media/presign:
+    post:
+      summary: Create a presigned upload URL for a profile photo
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MediaPresignRequest"
+      responses:
+        "200":
+          description: Presigned upload target
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MediaPresignResponse"
+  /media/photos:
+    post:
+      summary: Register an uploaded profile photo
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PhotoCreateRequest"
+      responses:
+        "201":
+          description: Photo
+  /media/photos/{id}:
+    delete:
+      summary: Delete a profile photo
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Photo deleted
+        "404":
+          description: Photo not found
+  /media/photos/reorder:
+    patch:
+      summary: Reorder profile photos
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                required: [id, order_index]
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  order_index:
+                    type: integer
+                    minimum: 0
+      responses:
+        "200":
+          description: Order saved
+  /notifications/push-token:
+    post:
+      summary: Register or update an Expo push token
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushTokenRequest"
+      responses:
+        "201":
+          description: Token saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+  /notifications/register:
+    post:
+      summary: Legacy alias for push token registration
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushTokenRequest"
+      responses:
+        "201":
+          description: Token saved
+  /notifications/settings:
+    get:
+      summary: Notification settings defaults
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Notification settings
+  /moderation/reports:
+    post:
+      summary: Report a user
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReportRequest"
+      responses:
+        "201":
+          description: Report queued
+  /moderation/blocks:
+    get:
+      summary: List blocked users
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Block list
+    post:
+      summary: Block a user
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [blockedId]
+              properties:
+                blockedId:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          description: User blocked
+  /privacy/center:
+    get:
+      summary: Privacy center summary
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Privacy model details
+  /search:
+    get:
+      summary: Search people, events, and communities
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: q
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 80
+      responses:
+        "200":
+          description: Search results
+  /metrics:
+    get:
+      summary: Prometheus metrics
+      responses:
+        "200":
+          description: Prometheus scrapable metrics
+  /docs:
+    get:
+      summary: Swagger UI
+      responses:
+        "200":
+          description: Swagger HTML page
+  /docs/openapi.json:
+    get:
+      summary: OpenAPI spec JSON
+      responses:
+        "200":
+          description: OpenAPI spec
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    IdParam:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: string
+    CursorParam:
+      in: query
+      name: cursor
+      required: false
+      schema:
+        type: string
+      description: Pagination cursor (ISO timestamp from last item's created_at)
+    LimitParam:
+      in: query
+      name: limit
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 10
+      description: Items per page
+  schemas:
+    PaginatedResponse:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        nextCursor:
+          type: string
+          nullable: true
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+        db:
+          type: boolean
+        ts:
+          type: number
+    OkResponse:
+      type: object
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+    ListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        nextCursor:
+          type: string
+          nullable: true
+    MagicStartRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+    MagicStartResponse:
+      type: object
+      required: [ok, message]
+      properties:
+        ok:
+          type: boolean
+        message:
+          type: string
+        devMagicLink:
+          type: string
+          description: Present outside production only
+    MagicVerifyRequest:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+          minLength: 20
+        deviceId:
+          type: string
+          default: mobile
+    GoogleAuthRequest:
+      type: object
+      anyOf:
+        - required: [token]
+        - required: [idToken]
+      properties:
+        token:
+          type: string
+        idToken:
+          type: string
+        deviceId:
+          type: string
+          default: mobile
+    AppleAuthRequest:
+      type: object
+      anyOf:
+        - required: [token]
+        - required: [identityToken]
+      properties:
+        token:
+          type: string
+        identityToken:
+          type: string
+        deviceId:
+          type: string
+          default: mobile
+    RefreshRequest:
+      type: object
+      anyOf:
+        - required: [refreshToken]
+        - required: [refresh_token]
+      properties:
+        refreshToken:
+          type: string
+        refresh_token:
+          type: string
+        deviceId:
+          type: string
+          default: mobile
+    LogoutRequest:
+      type: object
+      anyOf:
+        - required: [refreshToken]
+        - required: [refresh_token]
+      properties:
+        refreshToken:
+          type: string
+        refresh_token:
+          type: string
+    AuthSession:
+      type: object
+      required: [accessToken, refreshToken, userId]
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        userId:
+          type: string
+    Visibility:
+      type: string
+      enum: [public, matches, private, matching_only]
+    OnboardingStep:
+      type: string
+      enum: [welcome, city, languages, culture, interests, photo, complete]
+    CurrentUserPatch:
+      type: object
+      properties:
+        onboarding_step:
+          $ref: "#/components/schemas/OnboardingStep"
+    ProfileInput:
+      type: object
+      required: [name, age, city, goal, languages]
+      properties:
+        name:
+          type: string
+        age:
+          type: integer
+          minimum: 18
+          maximum: 99
+        bio:
+          type: string
+          maxLength: 300
+        city:
+          type: string
+        country:
+          type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
+        goal:
+          type: string
+          enum: [friends, dating, events, community, all]
+        languages:
+          type: array
+          items:
+            type: string
+        cultures:
+          type: array
+          items:
+            type: string
+        interests:
+          type: array
+          items:
+            type: string
+        religion:
+          type: string
+        religion_visibility:
+          $ref: "#/components/schemas/Visibility"
+        sexuality:
+          type: string
+        sexuality_visibility:
+          $ref: "#/components/schemas/Visibility"
+        ethnicity:
+          type: string
+        ethnicity_visibility:
+          $ref: "#/components/schemas/Visibility"
+        politics:
+          type: string
+        politics_visibility:
+          $ref: "#/components/schemas/Visibility"
+        family_values:
+          type: string
+        i_can_teach:
+          type: string
+        i_miss_from_home:
+          type: string
+        favorite_tradition:
+          type: string
+        looking_for:
+          type: string
+        university:
+          type: string
+    ProfilePatch:
+      type: object
+      properties:
+        name:
+          type: string
+        age:
+          type: integer
+          minimum: 18
+          maximum: 99
+        bio:
+          type: string
+          maxLength: 300
+        city:
+          type: string
+        country:
+          type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
+        goal:
+          type: string
+          enum: [friends, dating, events, community, all]
+        languages:
+          type: array
+          items:
+            type: string
+        cultures:
+          type: array
+          items:
+            type: string
+        interests:
+          type: array
+          items:
+            type: string
+        religion:
+          type: string
+        religion_visibility:
+          $ref: "#/components/schemas/Visibility"
+        sexuality:
+          type: string
+        sexuality_visibility:
+          $ref: "#/components/schemas/Visibility"
+        ethnicity:
+          type: string
+        ethnicity_visibility:
+          $ref: "#/components/schemas/Visibility"
+        politics:
+          type: string
+        politics_visibility:
+          $ref: "#/components/schemas/Visibility"
+        family_values:
+          type: string
+        i_can_teach:
+          type: string
+        i_miss_from_home:
+          type: string
+        favorite_tradition:
+          type: string
+        looking_for:
+          type: string
+        university:
+          type: string
+    Profile:
+      allOf:
+        - $ref: "#/components/schemas/ProfileInput"
+        - type: object
+          properties:
+            id:
+              type: string
+            user_id:
+              type: string
+            email:
+              type: string
+            onboarding_step:
+              $ref: "#/components/schemas/OnboardingStep"
+            profile_complete_pct:
+              type: integer
+            is_hidden:
+              type: boolean
+            photo_url:
+              type: string
+              nullable: true
+            thumbnail_url:
+              type: string
+              nullable: true
+            created_at:
+              type: string
+            updated_at:
+              type: string
+    DeleteUserResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        anonymizeAfterDays:
+          type: integer
+    Compatibility:
+      type: object
+      properties:
+        score:
+          type: integer
+        reasons:
+          type: array
+          items:
+            type: string
+        breakdown:
+          type: object
+          additionalProperties: true
+    DiscoveryResponse:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            allOf:
+              - $ref: "#/components/schemas/Profile"
+              - type: object
+                properties:
+                  compatibility:
+                    $ref: "#/components/schemas/Compatibility"
+                  distanceLabel:
+                    type: string
+        nextCursor:
+          type: string
+          nullable: true
+    SwipeRequest:
+      type: object
+      required: [action]
+      properties:
+        swipedId:
+          type: string
+          format: uuid
+        swiped_id:
+          type: string
+          format: uuid
+        action:
+          type: string
+          enum: [like, skip, superlike]
+    SwipeResponse:
+      type: object
+      required: [matched]
+      properties:
+        matched:
+          type: boolean
+        match:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: string
+    Conversation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        match_id:
+          type: string
+          format: uuid
+        peer_id:
+          type: string
+          format: uuid
+        peer_name:
+          type: string
+        thumbnail_url:
+          type: string
+          nullable: true
+        last_message_content:
+          type: string
+          nullable: true
+        last_message_type:
+          type: string
+          enum: [text, image, reaction, icebreaker]
+          nullable: true
+        last_message_sender_id:
+          type: string
+          format: uuid
+          nullable: true
+        last_message_created_at:
+          type: string
+          format: date-time
+          nullable: true
+        unread_count:
+          type: integer
+    ConversationListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Conversation"
+    MessageCreateRequest:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        type:
+          type: string
+          enum: [text, image, reaction, icebreaker]
+          default: text
+    EventCreateRequest:
+      type: object
+      required: [title, city, starts_at]
+      properties:
+        title:
+          type: string
+          minLength: 3
+        description:
+          type: string
+        city:
+          type: string
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+        languages:
+          type: array
+          items:
+            type: string
+        cultures:
+          type: array
+          items:
+            type: string
+        interests:
+          type: array
+          items:
+            type: string
+        max_attendees:
+          type: integer
+        is_public:
+          type: boolean
+    EventDetail:
+      allOf:
+        - $ref: "#/components/schemas/EventCreateRequest"
+        - type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            creator_id:
+              type: string
+              format: uuid
+              nullable: true
+            attendees_count:
+              type: integer
+            my_status:
+              type: string
+              enum: [going, maybe]
+              nullable: true
+            created_at:
+              type: string
+              format: date-time
+    CommunityCreateRequest:
+      type: object
+      required: [name, city]
+      properties:
+        name:
+          type: string
+          minLength: 3
+        description:
+          type: string
+        city:
+          type: string
+        languages:
+          type: array
+          items:
+            type: string
+        cultures:
+          type: array
+          items:
+            type: string
+        interests:
+          type: array
+          items:
+            type: string
+        max_members:
+          type: integer
+          minimum: 5
+          maximum: 20
+        is_public:
+          type: boolean
+    CommunityDetail:
+      allOf:
+        - $ref: "#/components/schemas/CommunityCreateRequest"
+        - type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            creator_id:
+              type: string
+              format: uuid
+              nullable: true
+            members_count:
+              type: integer
+            is_member:
+              type: boolean
+            my_role:
+              type: string
+              enum: [admin, member]
+              nullable: true
+            created_at:
+              type: string
+              format: date-time
+    CommunityMessage:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        community_id:
+          type: string
+          format: uuid
+        sender_id:
+          type: string
+          format: uuid
+        sender_name:
+          type: string
+          nullable: true
+        sender_thumbnail_url:
+          type: string
+          nullable: true
+        content:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    CommunityMessageListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CommunityMessage"
+    MediaPresignRequest:
+      type: object
+      required: [contentType]
+      properties:
+        contentType:
+          type: string
+          enum: [image/jpeg, image/png, image/webp]
+        sizeBytes:
+          type: integer
+          maximum: 10485760
+    MediaPresignResponse:
+      type: object
+      required: [uploadUrl, key, photoUrl, publicUrl]
+      properties:
+        uploadUrl:
+          type: string
+        key:
+          type: string
+        photoUrl:
+          type: string
+        publicUrl:
+          type: string
+    PhotoCreateRequest:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+        key:
+          type: string
+        thumbnail_url:
+          type: string
+          format: uri
+        order_index:
+          type: integer
+          default: 0
+        is_primary:
+          type: boolean
+          default: false
+    PushTokenRequest:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+          minLength: 10
+    ReportRequest:
+      type: object
+      required: [reportedId, reason]
+      properties:
+        reportedId:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          enum: [fake profile, harassment, spam, inappropriate content, scam]
+        description:
+          type: string
+          maxLength: 1000

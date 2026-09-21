@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "CultureMatch",
+    "slug": "culturematch",
+    "scheme": "culturematch",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.culturematch.app"
+    },
+    "android": {
+      "package": "com.culturematch.app"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-localization",
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "CultureMatch uses photos only when you choose to add them to your profile."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      }
+    }
+  }
+}
